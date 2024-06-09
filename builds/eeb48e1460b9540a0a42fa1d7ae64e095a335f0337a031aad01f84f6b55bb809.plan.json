@@ -1,0 +1,1 @@
+{"filename": "builds\\eeb48e1460b9540a0a42fa1d7ae64e095a335f0337a031aad01f84f6b55bb809.zip", "runtime": "python3.11", "artifacts_dir": "builds", "build_plan": [["zip", "./src/LambdaLayerCreator", null]]}
