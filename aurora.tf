@@ -16,10 +16,59 @@ resource "aws_rds_global_cluster" "this" {
   storage_encrypted         = true
 }
 
+resource "aws_rds_global_cluster" "this_app" {
+  global_cluster_identifier = "${local.name}-app-cluster"
+  engine                    = "aurora-postgresql"
+  engine_version            = "14.5"
+  database_name             = "aurora_db"
+  storage_encrypted         = true
+}
+
+module "aurora_postgresql_v2_primary_app" {
+  source = "terraform-aws-modules/rds-aurora/aws"
+
+  name              = "${local.name}-postgresqlv2-app" # primary-app-cluster
+  engine            = data.aws_rds_engine_version.postgresql.engine
+  engine_mode       = "provisioned"
+  engine_version    = data.aws_rds_engine_version.postgresql.version
+  storage_encrypted = true
+  master_username   = "root"
+  global_cluster_identifier = aws_rds_global_cluster.this_app.id
+  master_password   = random_password.master.result 
+  manage_master_user_password = false
+  kms_key_id = aws_kms_key.primary-app.arn
+
+  vpc_id               = module.vpc.vpc_id
+  db_subnet_group_name = module.vpc.database_subnet_group_name
+  security_group_rules = {
+    vpc_ingress = {
+      cidr_blocks = module.vpc.private_subnets_cidr_blocks
+    }
+  }
+
+  monitoring_interval = 60
+
+  apply_immediately   = true
+  skip_final_snapshot = true
+
+  serverlessv2_scaling_configuration = {
+    min_capacity = 0.5
+    max_capacity = 10
+  }
+
+  instance_class = "db.serverless"
+  instances = {
+    one = {}
+    #two = {}
+  }
+
+  tags = local.tags
+}
+
 module "aurora_postgresql_v2_primary" {
   source = "terraform-aws-modules/rds-aurora/aws"
 
-  name              = "${local.name}-postgresqlv2"
+  name              = "${local.name}-postgresqlv2" # primary-demo-cluster
   engine            = data.aws_rds_engine_version.postgresql.engine
   engine_mode       = "provisioned"
   engine_version    = data.aws_rds_engine_version.postgresql.version
@@ -44,7 +93,7 @@ module "aurora_postgresql_v2_primary" {
   skip_final_snapshot = true
 
   serverlessv2_scaling_configuration = {
-    min_capacity = 2
+    min_capacity = 0.5
     max_capacity = 10
   }
 
@@ -89,7 +138,7 @@ module "aurora_postgresql_v2_secondary" {
   skip_final_snapshot = true
 
   serverlessv2_scaling_configuration = {
-    min_capacity = 2
+    min_capacity = 0.5
     max_capacity = 10
   }
 
@@ -153,6 +202,11 @@ data "aws_iam_policy_document" "rds" {
 }
 
 resource "aws_kms_key" "primary" {
+  policy = data.aws_iam_policy_document.rds.json
+  tags   = local.tags
+}
+
+resource "aws_kms_key" "primary-app" {
   policy = data.aws_iam_policy_document.rds.json
   tags   = local.tags
 }

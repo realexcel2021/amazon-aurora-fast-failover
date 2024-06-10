@@ -1,4 +1,17 @@
+locals {
+  reader_endpoint_cluster = "demo.db.cluster.reader.ha-serverless.devopslord.com.internal"
+  writer_endpoint_cluster = "demo.db.cluster.writer.ha-serverless.devopslord.com.internal"
 
+  writer_endpoint = "demo.db.writer.ha-serverless.devopslord.com.internal"
+  reader_endpoint = "demo.db.reader.ha-serverless.devopslord.com.internal"
+}
+
+locals {
+  writer_endpoint_cluster_app = "app.db.cluster.writer.ha-serverless.devopslord.com.internal"
+
+  writer_endpoint_app = "app.db.writer.ha-serverless.devopslord.com.internal"
+  reader_endpoint_app = "app.db.reader.ha-serverless.devopslord.com.internal"
+}
 
 ######
 # ACM
@@ -9,14 +22,6 @@ data "aws_route53_zone" "this" {
   private_zone = false
 }
 
-# module "acm" {
-#   source  = "terraform-aws-modules/acm/aws"
-#   version = "~> 3.0"
-
-#   domain_name               = local.domain_name
-#   zone_id                   = data.aws_route53_zone.this.id # replace with zone ID
-#   subject_alternative_names = ["${local.subdomain}.${local.domain_name}"]
-# }
 
 
 # ##########
@@ -25,12 +30,12 @@ data "aws_route53_zone" "this" {
 
 
 resource "aws_acm_certificate" "api" {
-  domain_name       = "${local.subdomain}.${local.domain_name}"
+  domain_name       = "api.${local.subdomain}.${local.domain_name}"
   validation_method = "DNS"
 }
 
 resource "aws_acm_certificate" "api-region-2" {
-  domain_name       = "${local.subdomain}.${local.domain_name}"
+  domain_name       = "api.${local.subdomain}.${local.domain_name}"
   validation_method = "DNS"
   provider = aws.region2
 }
@@ -60,7 +65,7 @@ resource "aws_acm_certificate_validation" "api" {
 
 resource "aws_route53_record" "api-region1" {
   zone_id = data.aws_route53_zone.this.zone_id
-  name    = local.subdomain
+  name    = "api.${local.subdomain}"
   type    = "CNAME"
   ttl     = 60
   health_check_id = aws_route53_health_check.region1.id
@@ -75,7 +80,7 @@ resource "aws_route53_record" "api-region1" {
 
 resource "aws_route53_record" "api-region2" {
   zone_id = data.aws_route53_zone.this.zone_id
-  name    = local.subdomain
+  name    = "api.${local.subdomain}"
   type    = "CNAME"
   ttl     = 60
   health_check_id = aws_route53_health_check.region2.id
@@ -118,5 +123,104 @@ resource "aws_route53_health_check" "region2" {
 
   tags = {
     Name = "health-check-region-2"
+  }
+}
+
+###########################################################
+# database endpoints records
+############################################################
+
+resource "aws_route53_record" "writer_endpoint_failover" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = "demo.db.cluster.writer.ha-serverless.devopslord.com.internal"
+  type    = "CNAME"
+  ttl     = 60
+  #health_check_id = aws_route53_health_check.region2.id
+  records = [ module.aurora_postgresql_v2_secondary.cluster_endpoint ]
+  set_identifier = "us-west-2-db-record"
+  
+ weighted_routing_policy {
+    weight = 90
+  }
+}
+
+resource "aws_route53_record" "writer_endpoint_main" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = "demo.db.writer.ha-serverless.devopslord.com.internal"
+  type    = "CNAME"
+  ttl     = 60
+  #health_check_id = aws_route53_health_check.region2.id
+  records = [ module.aurora_postgresql_v2_primary.cluster_endpoint ]
+  set_identifier = "us-east-1-db-record"
+  
+ weighted_routing_policy {
+    weight = 90
+  }
+}
+
+resource "aws_route53_record" "read_endpoint_main" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = "demo.db.cluster.reader.ha-serverless.devopslord.com.internal"
+  type    = "CNAME"
+  ttl     = 60
+  #health_check_id = aws_route53_health_check.region2.id
+  records = [ module.aurora_postgresql_v2_primary.cluster_reader_endpoint ]
+  set_identifier = "us-east-1-db-record-read"
+  
+ weighted_routing_policy {
+    weight = 90
+  }
+}
+
+resource "aws_route53_record" "read_endpoint_replica" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = "demo.db.reader.ha-serverless.devopslord.com.internal"
+  type    = "CNAME"
+  ttl     = 60
+  records = [ module.aurora_postgresql_v2_secondary.cluster_reader_endpoint ]
+  set_identifier = "us-west-1-db-record-read"
+  
+ weighted_routing_policy {
+    weight = 90
+  }
+}
+
+
+resource "aws_route53_record" "read_endpoint_replica_app" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = local.reader_endpoint_app
+  type    = "CNAME"
+  ttl     = 60
+  records = [ module.aurora_postgresql_v2_primary_app.cluster_reader_endpoint ]
+  set_identifier = "us-east-1-db-record-read-app"
+  
+ weighted_routing_policy {
+    weight = 90
+  }
+}
+
+resource "aws_route53_record" "writer_endpoint_replica_app" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = local.writer_endpoint_cluster_app
+  type    = "CNAME"
+  ttl     = 60
+  records = [ module.aurora_postgresql_v2_primary_app.cluster_endpoint ]
+  set_identifier = "us-east-1-db-record-write-app"
+  
+ weighted_routing_policy {
+    weight = 90
+  }
+}
+
+resource "aws_route53_record" "writer_endpoint_replica_app_proxy" {
+  zone_id = data.aws_route53_zone.this.zone_id
+  name    = local.writer_endpoint_app # supposed to be proxy endpoint will add later
+  type    = "CNAME"
+  ttl     = 60
+  records = [ module.aurora_postgresql_v2_primary_app.cluster_endpoint ]
+  set_identifier = "us-east-1-db-record-write-app-proxy"
+  
+ weighted_routing_policy {
+    weight = 90
   }
 }

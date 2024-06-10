@@ -8,15 +8,16 @@ module "api_gateway" {
   name          = "${random_pet.this.id}-http"
   description   = "${random_pet.this.id} HTP api for us-east-1"
   protocol_type = "HTTP"
+  create_default_stage = true
 
   create_api_domain_name = true
   
   domain_name_certificate_arn = aws_acm_certificate.api.arn # module.acm.acm_certificate_arn
-  domain_name = "${local.subdomain}.${local.domain_name}"
+  domain_name = "api.${local.subdomain}.${local.domain_name}"
 
   integrations = {
     "GET /get-cluster-info" = {
-      integration_type        = "AWS"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.lambda_function.lambda_function_arn
       integration_http_method = "POST"
@@ -27,7 +28,7 @@ module "api_gateway" {
     }
 
     "GET /get-failover-events" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.GetFailoverEvents.lambda_function_arn
       integration_http_method = "POST"
@@ -38,7 +39,7 @@ module "api_gateway" {
     }
 
     "GET /bypass-rds-proxy" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.BypassRdsProxy.lambda_function_arn
       integration_http_method = "POST"
@@ -49,7 +50,7 @@ module "api_gateway" {
     }
 
     "GET /calculate-recovery-time" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.CalculateRecoveryTime.lambda_function_arn
       integration_http_method = "POST"
@@ -60,7 +61,7 @@ module "api_gateway" {
     }
 
     "GET /generate-sample-traffic" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.GenerateSampleTraffic.lambda_function_arn
       integration_http_method = "POST"
@@ -71,7 +72,7 @@ module "api_gateway" {
     } 
 
     "GET /get-client-errors" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.GetClientErrors.lambda_function_arn
       integration_http_method = "POST"
@@ -82,7 +83,7 @@ module "api_gateway" {
     }   
 
     "GET /get-client-traffic" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.GetClientTraffic.lambda_function_arn
       integration_http_method = "POST"
@@ -93,7 +94,7 @@ module "api_gateway" {
     }
 
     "GET /perform-health-check" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.HealthCheck.lambda_function_arn
       integration_http_method = "POST"
@@ -104,7 +105,7 @@ module "api_gateway" {
     }
 
     "GET /initiate-failover" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.InitiateFailover.lambda_function_arn
       integration_http_method = "POST"
@@ -115,7 +116,7 @@ module "api_gateway" {
     }
 
     "GET /reset-demo-environment" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.ResetDemoEnvironment.lambda_function_arn
       integration_http_method = "POST"
@@ -126,7 +127,7 @@ module "api_gateway" {
     }
 
     "GET /update-database-nacl" = {
-      integration_type        = "MOCK"
+      integration_type        = "AWS_PROXY"
       authorizer_type         = "NONE"
       lambda_arn              = module.UpdateDatabaseNacl.lambda_function_arn
       integration_http_method = "POST"
@@ -154,7 +155,7 @@ module "api_gateway_us_east_2" {
 
   create_api_domain_name = true
   domain_name_certificate_arn = aws_acm_certificate.api-region-2.arn # module.acm.acm_certificate_arn
-  domain_name = "${local.subdomain}.${local.domain_name}"
+  domain_name = "api.${local.subdomain}.${local.domain_name}"
 
 
 }

@@ -1,5 +1,6 @@
 module "lambda_function" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "GetClusterInfo"
@@ -16,7 +17,7 @@ module "lambda_function" {
   source_path = "${path.module}/src/GetClusterInfo"
 
   environment_variables = {
-    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_primary.cluster_id
+    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -38,6 +39,7 @@ module "lambda_function" {
 
 module "GetFailoverEvents" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "GetFailoverEvents"
@@ -54,8 +56,8 @@ module "GetFailoverEvents" {
   source_path = "${path.module}/src/GetFailoverEvents"
 
   environment_variables = {
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    REGIONAL_DEMO_DB_SECRET_ARN    = ""
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    REGIONAL_DEMO_DB_SECRET_ARN    = "${aws_secretsmanager_secret.db_pass.arn}"
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -78,6 +80,7 @@ module "GetFailoverEvents" {
 
 module "BypassRdsProxy" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "BypassRdsProxy"
@@ -94,11 +97,11 @@ module "BypassRdsProxy" {
   source_path = "${path.module}/src/BypassRdsProxy"
 
   environment_variables = {
-    GLOBAL_APP_DB_READER_ENDPOINT = ""
-    GLOBAL_APP_DB_WRITER_ENDPOINT = ""
-    PRIVATE_HOSTED_ZONE_ID        = ""
-    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = ""
-    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = ""
+    GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
+    GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
+    PRIVATE_HOSTED_ZONE_ID        = var.zone_id
+    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
+    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -120,6 +123,7 @@ module "BypassRdsProxy" {
 
 module "CalculateRecoveryTime" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "CalculateRecoveryTime"
@@ -136,8 +140,8 @@ module "CalculateRecoveryTime" {
   source_path = "${path.module}/src/CalculateRecoveryTime"
 
   environment_variables = {
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    REGIONAL_DEMO_DB_SECRET_ARN    = ""
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    REGIONAL_DEMO_DB_SECRET_ARN    = "${aws_secretsmanager_secret.db_pass.arn}"
 
   }
 
@@ -160,6 +164,7 @@ module "CalculateRecoveryTime" {
 
 module "GenerateSampleTraffic" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "GenerateSampleTraffic"
@@ -176,7 +181,7 @@ module "GenerateSampleTraffic" {
   source_path = "${path.module}/src/GenerateSampleTraffic"
 
   environment_variables = {
-    TEST_TRAFFIC_TOPIC_ARN = ""
+    TEST_TRAFFIC_TOPIC_ARN = "${aws_sns_topic.test-traffic.arn}"
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -198,6 +203,7 @@ module "GenerateSampleTraffic" {
 
 module "GetClientErrors" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "GetClientErrors"
@@ -214,8 +220,8 @@ module "GetClientErrors" {
   source_path = "${path.module}/src/GetClientErrors"
 
   environment_variables = {
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    REGIONAL_DEMO_DB_SECRET_ARN    = ""
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    REGIONAL_DEMO_DB_SECRET_ARN    = "${aws_secretsmanager_secret.db_pass.arn}"
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -237,6 +243,7 @@ module "GetClientErrors" {
 
 module "GetClientTraffic" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "GetClientTraffic"
@@ -253,8 +260,8 @@ module "GetClientTraffic" {
   source_path = "${path.module}/src/GetClientTraffic"
 
   environment_variables = {
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    REGIONAL_DEMO_DB_SECRET_ARN    = ""
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    REGIONAL_DEMO_DB_SECRET_ARN    = "${aws_secretsmanager_secret.db_pass.arn}"
 
   }
 
@@ -277,6 +284,7 @@ module "GetClientTraffic" {
 
 module "HealthCheck" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "HealthCheck"
@@ -315,6 +323,7 @@ module "HealthCheck" {
 
 module "InitiateFailover" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "InitiateFailover"
@@ -331,9 +340,9 @@ module "InitiateFailover" {
   source_path = "${path.module}/src/InitiateFailover"
 
   environment_variables = {
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -355,6 +364,7 @@ module "InitiateFailover" {
 
 module "ResetDemoEnvironment" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "ResetDemoEnvironment"
@@ -371,22 +381,22 @@ module "ResetDemoEnvironment" {
   source_path = "${path.module}/src/ResetDemoEnvironment"
 
   environment_variables = {
-    DATABASE_CANARY_CRON_NAME = ""
-    FAILOVER_REGION_NAME      = ""
-    GLOBAL_APP_DB_READER_ENDPOINT = ""
-    GLOBAL_APP_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    PRIVATE_HOSTED_ZONE_ID  = ""
-    PROXY_MONITOR_CRON_NAME = ""
-    PUBLIC_FQDN = ""
-    PUBLIC_HOSTED_ZONE_ID = ""
-    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = ""
-    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_NACL_ID = ""
-    REGIONAL_APP_DB_PROXY_READER_ENDPOINT = ""
-    REGIONAL_APP_DB_PROXY_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_SECRET_ARN = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    DATABASE_CANARY_CRON_NAME = "database-canary"
+    FAILOVER_REGION_NAME      = local.region2
+    GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
+    GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    PRIVATE_HOSTED_ZONE_ID  = var.zone_id
+    PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
+    PUBLIC_FQDN = "ha-serverless.devopslord.com"
+    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
+    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
+    REGIONAL_APP_DB_NACL_ID = "${aws_network_acl.DatabaseAcl.id}"
+    REGIONAL_APP_DB_PROXY_READER_ENDPOINT = module.AppDbProxy_rds_proxy.proxy_endpoint
+    REGIONAL_APP_DB_PROXY_WRITER_ENDPOINT = module.AppDbProxy_rds_proxy.proxy_endpoint
+    REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_WEB_ALB_FQDN = ""
     REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
   }
@@ -410,6 +420,7 @@ module "ResetDemoEnvironment" {
 
 module "UpdateDatabaseNacl" {
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "UpdateDatabaseNacl"
@@ -426,9 +437,9 @@ module "UpdateDatabaseNacl" {
   source_path = "${path.module}/src/UpdateDatabaseNacl"
 
   environment_variables = {
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_NACL_ID = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    REGIONAL_APP_DB_NACL_ID = "${aws_network_acl.DatabaseAcl.id}"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -448,38 +459,16 @@ module "UpdateDatabaseNacl" {
      ec2 = {
       effect = "Allow"
       actions = ["ec2:ReplaceNetworkAclEntry"]
-      resources = "*"
+      resources = ["*"]
      }
    }
 }
 
-module "lambda_layer" {
-  source = "terraform-aws-modules/lambda/aws"
+resource "aws_lambda_layer_version" "lambda_layer" {
+  filename   = "./src/StackSet-multi-region-postgresql-aurora-layer.zip"
+  layer_name = "amazon-aurora-failover-layer"
 
-
-  compatible_runtimes       = ["python3.11", "python3.10", "python3.9"]
-  layer_name = "aurora-serverless-layer"
-
-  source_path = "${path.module}/src/LambdaLayerCreator"
-
-  attach_policy = true
-  policy        = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-
-  environment_variables = {
-    Region = local.region2
-  }
-
-  vpc_subnet_ids = module.vpc.private_subnets
-  vpc_security_group_ids = [module.LambdaSecurityGroup.security_group_id]
-
-  attach_policy_statements = true
-  policy_statements = {
-    layer_access = {
-      effect    = "Allow",
-      actions   = ["lambda:ListLayerVersions", "lambda:DeleteLayerVersion", "lambda:PublishLayerVersion"],
-      resources = ["*"]
-    }
-  }
+  compatible_runtimes = ["python3.11", "python3.9", "python3.10"]
 }
 
 
@@ -489,6 +478,7 @@ module "lambda_layer" {
 
 module "ClientEmulator" { # the SNS guy here
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "ClientEmulator"
@@ -505,11 +495,11 @@ module "ClientEmulator" { # the SNS guy here
   source_path = "${path.module}/src/ClientEmulator"
 
   environment_variables = {
-    FAILOVER_REGION_NAME = ""
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    PRIMARY_REGION_NAME = ""
-    PUBLIC_FQDN = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    FAILOVER_REGION_NAME = local.region2
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    PRIMARY_REGION_NAME = local.region1
+    PUBLIC_FQDN = "ha-serverless.devopslord.com"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -531,6 +521,7 @@ module "ClientEmulator" { # the SNS guy here
 
 module "DatabaseCanary" { # the event bridge cron job guy here
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "DatabaseCanary"
@@ -546,14 +537,14 @@ module "DatabaseCanary" { # the event bridge cron job guy here
   source_path = "${path.module}/src/DatabaseCanary"
 
   environment_variables = {
-    DATABASE_CANARY_CRON_NAME = ""
+    DATABASE_CANARY_CRON_NAME = "database-canary"
     GLOBAL_APP_DB_CLUSTER_IDENTIFIER = ""
-    GLOBAL_APP_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    PUBLIC_FQDN = ""
+    GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    PUBLIC_FQDN = "ha-serverless.devopslord.com"
     REGIONAL_APP_DB_CLUSTER_ARN = ""
-    REGIONAL_APP_DB_SECRET_ARN = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
 
   }
 
@@ -576,12 +567,18 @@ module "DatabaseCanary" { # the event bridge cron job guy here
        actions   = ["rds:DescribeGlobalClusters", "rds:RemoveFromGlobalCluster"],
        resources = ["*"]
      }
+     eventbridge = {
+       effect    = "Allow",
+       actions   = ["events:*"],
+       resources = ["*"]
+     }
    }
 }
 
 
 module "FailoverCompletedHandler" { # the rds event bridge guy here
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "FailoverCompletedHandler"
@@ -598,21 +595,21 @@ module "FailoverCompletedHandler" { # the rds event bridge guy here
   source_path = "${path.module}/src/FailoverCompletedHandler"
 
   environment_variables = {
-    FAILOVER_REGION_NAME = ""
-    GLOBAL_APP_DB_READER_ENDPOINT = ""
-    GLOBAL_APP_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    PRIMARY_REGION_NAME = ""
-    PRIVATE_HOSTED_ZONE_ID = ""
-    PROXY_MONITOR_CRON_NAME = ""
-    PUBLIC_FQDN = ""
-    PUBLIC_HOSTED_ZONE_ID = ""
-    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = ""
-    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = ""
-    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_PROXY_NAME = ""
-    REGIONAL_APP_DB_SECRET_ARN = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    FAILOVER_REGION_NAME = local.region2
+    GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
+    GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    PRIMARY_REGION_NAME = local.region1
+    PRIVATE_HOSTED_ZONE_ID = var.zone_id
+    PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
+    PUBLIC_FQDN = "ha-serverless.devopslord.com"
+    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
+    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
+    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
+    REGIONAL_APP_DB_PROXY_NAME = "app-db-proxy"
+    REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_WEB_ALB_FQDN = ""
     REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
 
@@ -647,6 +644,7 @@ module "FailoverCompletedHandler" { # the rds event bridge guy here
 
 module "FailoverStartedHandler" { # another event bridge guy here
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "FailoverStartedHandler"
@@ -663,22 +661,22 @@ module "FailoverStartedHandler" { # another event bridge guy here
   source_path = "${path.module}/src/FailoverStartedHandler"
 
   environment_variables = {
-    FAILOVER_REGION_NAME = ""
-    GLOBAL_APP_DB_READER_ENDPOINT = ""
-    GLOBAL_APP_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_READER_ENDPOINT = ""
-    PRIMARY_REGION_NAME = ""
-    PRIVATE_HOSTED_ZONE_ID = ""
-    PROXY_MONITOR_CRON_NAME = ""
-    PUBLIC_FQDN = ""
-    PUBLIC_HOSTED_ZONE_ID = ""
-    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = ""
-    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = ""
-    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_PROXY_NAME = ""
-    REGIONAL_APP_DB_SECRET_ARN = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    FAILOVER_REGION_NAME = local.region2
+    GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
+    GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    GLOBAL_DEMO_DB_READER_ENDPOINT = local.reader_endpoint
+    PRIMARY_REGION_NAME = local.region1
+    PRIVATE_HOSTED_ZONE_ID = var.zone_id
+    PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
+    PUBLIC_FQDN = "ha-serverless.devopslord.com"
+    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
+    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
+    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
+    REGIONAL_APP_DB_PROXY_NAME = "app-db-proxy"
+    REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_WEB_ALB_FQDN = ""
     REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
 
@@ -717,8 +715,9 @@ module "FailoverStartedHandler" { # another event bridge guy here
 }
 
 
-module "RdsProxyMonitor" {
+module "RdsProxyMonitor" { # another event bridge cron
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "RdsProxyMonitor"
@@ -735,22 +734,22 @@ module "RdsProxyMonitor" {
   source_path = "${path.module}/src/RdsProxyMonitor"
 
   environment_variables = {
-    FAILOVER_REGION_NAME = ""
-    GLOBAL_APP_DB_READER_ENDPOINT = ""
-    GLOBAL_APP_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_WRITER_ENDPOINT = ""
-    GLOBAL_DEMO_DB_READER_ENDPOINT = ""
-    PRIMARY_REGION_NAME = ""
-    PRIVATE_HOSTED_ZONE_ID = ""
-    PROXY_MONITOR_CRON_NAME = ""
-    PUBLIC_FQDN = ""
-    PUBLIC_HOSTED_ZONE_ID = ""
-    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = ""
-    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = ""
-    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_PROXY_NAME = ""
-    REGIONAL_APP_DB_SECRET_ARN = ""
-    REGIONAL_DEMO_DB_SECRET_ARN = ""
+    FAILOVER_REGION_NAME = local.region2
+    GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
+    GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
+    GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
+    GLOBAL_DEMO_DB_READER_ENDPOINT = local.reader_endpoint
+    PRIMARY_REGION_NAME = local.region1
+    PRIVATE_HOSTED_ZONE_ID = var.zone_id
+    PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
+    PUBLIC_FQDN = "ha-serverless.devopslord.com"
+    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
+    REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
+    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
+    REGIONAL_APP_DB_PROXY_NAME = "app-db-proxy"
+    REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
+    REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_WEB_ALB_FQDN = ""
     REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
 
@@ -783,8 +782,9 @@ module "RdsProxyMonitor" {
    }
 }
 
-module "Website" {
+module "Website" { # loadbalancer guy here!
   source = "terraform-aws-modules/lambda/aws"
+  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
 
 
   function_name = "Website"
@@ -801,8 +801,8 @@ module "Website" {
   source_path = "${path.module}/src/Website"
 
   environment_variables = {
-    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = ""
-    REGIONAL_APP_DB_SECRET_ARN = ""
+    REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
+    REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
 
   }
 

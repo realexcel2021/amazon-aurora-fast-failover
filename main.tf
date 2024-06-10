@@ -19,7 +19,7 @@ locals {
   region1 = "us-east-1"
   region2 = "us-west-1"
   name  = "amazon-aurora-fast-failover"
-  vpc_cidr = "10.0.0.0/24"
+  vpc_cidr = "10.0.0.0/16"
   azs                          = slice(data.aws_availability_zones.available.names, 0, 3)
   azs_secondary                = slice(data.aws_availability_zones.secondary.names, 0,2) 
   tags = {
