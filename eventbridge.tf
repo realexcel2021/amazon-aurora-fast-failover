@@ -1,47 +1,47 @@
 ########################
-# cron job
+# event rules
 ########################
 
-resource "aws_scheduler_schedule" "database-canary" {
-  name       = "database-canary"
-  group_name = "default"
-  state      = "ENABLED" 
+resource "aws_cloudwatch_event_rule" "rds" {
+  name        = "event-rule-rds"
+  description = "Invokes Handler When Failover is Completed"
 
-  flexible_time_window {
-    mode = "OFF"
-  }
-
-  schedule_expression = "rate(1 minute)"
-
-  target {
-    arn      = module.DatabaseCanary.lambda_function_arn
-    role_arn = module.eventbridge_invoke_lambda.iam_role_arn
-  
-#   input = jsonencode({
-#    MessageBody = "{\"key\":\"value\"}"
-#   })
- 
-  }
+  event_pattern = jsonencode({
+    detail-type = [
+      "RDS DB Cluster Event"
+    ]
+    detail = {
+      SourceArn = [module.aurora_postgresql_v2_primary_app.cluster_arn]
+      EventID = ["RDS-EVENT-0071"]
+    }
+    source = ["aws.rds"]
+  })
 }
 
-resource "aws_scheduler_schedule" "RdsProxyMonitorCron" {
-  name       = "RdsProxyMonitorCron"
-  group_name = "default"
-  state      = "ENABLED" 
+resource "aws_cloudwatch_event_rule" "rds2" {
+  name        = "event-rule-rds"
+  description = "Invokes Handler When Failover is Started"
 
-  flexible_time_window {
-    mode = "OFF"
-  }
+  event_pattern = jsonencode({
+    detail-type = [
+      "RDS DB Cluster Event"
+    ]
+    detail = {
+      SourceArn = [module.aurora_postgresql_v2_primary_app.cluster_arn]
+      EventID = ["RDS-EVENT-0073"]
+    }
+    source = ["aws.rds"]
+  })
+}
 
-  schedule_expression = "rate(1 minute)"
+resource "aws_cloudwatch_event_target" "rds" {
+  rule      = aws_cloudwatch_event_rule.rds.name
+  target_id = "failover-completed"
+  arn       = module.FailoverCompletedHandler.lambda_function_arn
+}
 
-  target {
-    arn      = module.RdsProxyMonitor.lambda_function_arn
-    role_arn = module.eventbridge_invoke_lambda.iam_role_arn
-  
-#   input = jsonencode({
-#    MessageBody = "{\"key\":\"value\"}"
-#   })
- 
-  }
+resource "aws_cloudwatch_event_target" "rds2" {
+  rule      = aws_cloudwatch_event_rule.rds2.name
+  target_id = "failover-started"
+  arn       = module.FailoverStartedHandler.lambda_function_arn
 }

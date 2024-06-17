@@ -1,28 +1,25 @@
-variable "domainName" {
-  default = "www.dashboard.ha-serverless.devopslord.com"
-  type    = string
-}
-
-variable "bucketName" {
-  default = "www.dashboard.ha-serverless.devopslord.com"
-  type    = string
-}
-
-variable "zone_id" {
-  type = string
-}
 
 resource "aws_s3_bucket" "www-my-aws-project-com" {
-  bucket = var.bucketName
+  bucket = "dashboard.${var.domainName}"
 }
 
-
-
-
-resource "aws_s3_bucket_acl" "example_bucket_acl" {
+resource "aws_s3_bucket_ownership_controls" "example" {
   bucket = aws_s3_bucket.www-my-aws-project-com.id
-  acl    = "public-read"
+
+  rule {
+    object_ownership = "ObjectWriter"
+  }
 }
+
+resource "aws_s3_bucket_public_access_block" "example" {
+  bucket = aws_s3_bucket.www-my-aws-project-com.id
+
+  block_public_acls   = false
+  block_public_policy = false
+}
+
+
+
 
 resource "aws_s3_bucket_website_configuration" "my-config" {
   bucket = aws_s3_bucket.www-my-aws-project-com.id
@@ -50,6 +47,8 @@ resource "aws_s3_object" "build" {
   etag = filemd5("./src/dashboard/${each.value}")
   acl    = "public-read"
 content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.key), null)
+
+depends_on = [ aws_s3_bucket_ownership_controls.example ]
 }
 
 ##################################################
@@ -63,7 +62,7 @@ resource "aws_cloudfront_distribution" "my-distribution" {
   }
 
 
-  aliases = [var.domainName]
+  aliases = ["dashboard.${var.domainName}"]
 
   enabled = true
     default_root_object = "index.html"
@@ -112,9 +111,9 @@ output "cloudfront_url" {
 }
 
 resource "aws_acm_certificate" "cert-my-aws-project-com" {
-  domain_name       = var.domainName
+  domain_name       = "dashboard.${var.domainName}"
   validation_method = "DNS"
-    subject_alternative_names = [var.domainName, "dashboard.ha-serverless.devopslord.com"]
+    subject_alternative_names = ["dashboard.${var.domainName}"]
 
   lifecycle {
     create_before_destroy = true
@@ -141,12 +140,12 @@ resource "aws_route53_record" "cert-validation-record" {
   records         = [each.value.record]
   ttl             = 60
   type            = each.value.type
-  zone_id         = var.zone_id
+  zone_id         = data.aws_route53_zone.this.id
 }
 
 resource "aws_route53_record" "www" {
-  zone_id = var.zone_id
-  name    = var.domainName
+  zone_id = data.aws_route53_zone.this.id
+  name    = "dashboard.${var.domainName}"
   type    = "A"
 
   alias {

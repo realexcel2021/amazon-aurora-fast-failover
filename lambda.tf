@@ -1,6 +1,13 @@
 module "lambda_function" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
+
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/get-cluster-info"
+    }
+  }
 
 
   function_name = "GetClusterInfo"
@@ -39,8 +46,14 @@ module "lambda_function" {
 
 module "GetFailoverEvents" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/get-failover-events"
+    }
+  }
 
   function_name = "GetFailoverEvents"
   description   = "Retrieves failover events from the database"
@@ -80,8 +93,14 @@ module "GetFailoverEvents" {
 
 module "BypassRdsProxy" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/bypass-rds-proxy"
+    }
+  }
 
   function_name = "BypassRdsProxy"
   description   = "Retrieves failover events from the database"
@@ -99,7 +118,7 @@ module "BypassRdsProxy" {
   environment_variables = {
     GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
     GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
-    PRIVATE_HOSTED_ZONE_ID        = var.zone_id
+    PRIVATE_HOSTED_ZONE_ID        = aws_route53_zone.private.zone_id
     REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
     REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
   }
@@ -123,8 +142,14 @@ module "BypassRdsProxy" {
 
 module "CalculateRecoveryTime" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/calculate-recovery-time"
+    }
+  }
 
   function_name = "CalculateRecoveryTime"
   description   = "Retrieves failover events from the database"
@@ -164,19 +189,25 @@ module "CalculateRecoveryTime" {
 
 module "GenerateSampleTraffic" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/generate-sample-traffic"
+    }
+  }
 
   function_name = "GenerateSampleTraffic"
   description   = "Retrieves failover events from the database"
   handler       = "index.handler"
   runtime       = "python3.11"
   architectures = ["x86_64"]
-  timeout       = 60
+  timeout       = 900
   tracing_mode  = "PassThrough"
   publish       = true
   store_on_s3   = false
-  memory_size   = 128
+  memory_size   = 256
 
   source_path = "${path.module}/src/GenerateSampleTraffic"
 
@@ -184,8 +215,8 @@ module "GenerateSampleTraffic" {
     TEST_TRAFFIC_TOPIC_ARN = "${aws_sns_topic.test-traffic.arn}"
   }
 
-  vpc_subnet_ids = module.vpc.private_subnets
-  vpc_security_group_ids = [module.LambdaSecurityGroup.security_group_id]
+  # vpc_subnet_ids = module.vpc.private_subnets
+  # vpc_security_group_ids = [module.LambdaSecurityGroup.security_group_id]
 
    attach_policies    = true
    policies           = ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole", "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"]
@@ -203,8 +234,14 @@ module "GenerateSampleTraffic" {
 
 module "GetClientErrors" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/get-client-errors"
+    }
+  }
 
   function_name = "GetClientErrors"
   description   = "Retrieves failover events from the database"
@@ -238,13 +275,25 @@ module "GetClientErrors" {
        actions   = ["rds:DescribeDBClusters"],
        resources = ["*"]
      }
+    secretsmanager = {
+       effect    = "Allow",
+       actions   = ["secretsmanager:GetSecretValue", "kms:Decrypt"],
+       resources = ["*"]
+     }
+
    }
 }
 
 module "GetClientTraffic" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/get-client-traffic"
+    }
+  }
 
   function_name = "GetClientTraffic"
   description   = "Retrieves failover events from the database"
@@ -284,8 +333,14 @@ module "GetClientTraffic" {
 
 module "HealthCheck" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/perform-health-check"
+    }
+  }
 
   function_name = "HealthCheck"
   description   = "Retrieves failover events from the database"
@@ -323,8 +378,14 @@ module "HealthCheck" {
 
 module "InitiateFailover" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/initiate-failover"
+    }
+  }
 
   function_name = "InitiateFailover"
   description   = "Retrieves failover events from the database"
@@ -364,8 +425,14 @@ module "InitiateFailover" {
 
 module "ResetDemoEnvironment" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/reset-demo-environment"
+    }
+  }
 
   function_name = "ResetDemoEnvironment"
   description   = "Retrieves failover events from the database"
@@ -386,10 +453,10 @@ module "ResetDemoEnvironment" {
     GLOBAL_APP_DB_READER_ENDPOINT = local.reader_endpoint_app
     GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
     GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
-    PRIVATE_HOSTED_ZONE_ID  = var.zone_id
+    PRIVATE_HOSTED_ZONE_ID  = aws_route53_zone.private.zone_id
     PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
-    PUBLIC_FQDN = "ha-serverless.devopslord.com"
-    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    PUBLIC_FQDN = "${var.domainName}"
+    PUBLIC_HOSTED_ZONE_ID = data.aws_route53_zone.this.id
     REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
     REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
     REGIONAL_APP_DB_NACL_ID = "${aws_network_acl.DatabaseAcl.id}"
@@ -397,8 +464,8 @@ module "ResetDemoEnvironment" {
     REGIONAL_APP_DB_PROXY_WRITER_ENDPOINT = module.AppDbProxy_rds_proxy.proxy_endpoint
     REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
-    REGIONAL_WEB_ALB_FQDN = ""
-    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
+    REGIONAL_WEB_ALB_FQDN = module.alb.dns_name
+    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = module.alb.zone_id
   }
 
   vpc_subnet_ids = module.vpc.private_subnets
@@ -420,8 +487,14 @@ module "ResetDemoEnvironment" {
 
 module "UpdateDatabaseNacl" {
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/update-database-nacl"
+    }
+  }
 
   function_name = "UpdateDatabaseNacl"
   description   = "Retrieves failover events from the database"
@@ -478,7 +551,14 @@ resource "aws_lambda_layer_version" "lambda_layer" {
 
 module "ClientEmulator" { # the SNS guy here
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
+
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "sns.amazonaws.com"
+      source_arn = "${aws_sns_topic.test-traffic.arn}"
+    }
+  }
 
 
   function_name = "ClientEmulator"
@@ -490,7 +570,7 @@ module "ClientEmulator" { # the SNS guy here
   tracing_mode  = "PassThrough"
   publish       = true
   store_on_s3   = false
-  memory_size   = 128
+  memory_size   = 512
 
   source_path = "${path.module}/src/ClientEmulator"
 
@@ -498,7 +578,7 @@ module "ClientEmulator" { # the SNS guy here
     FAILOVER_REGION_NAME = local.region2
     GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
     PRIMARY_REGION_NAME = local.region1
-    PUBLIC_FQDN = "ha-serverless.devopslord.com"
+    PUBLIC_FQDN = "${var.domainName}"
     REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
   }
 
@@ -521,8 +601,14 @@ module "ClientEmulator" { # the SNS guy here
 
 module "DatabaseCanary" { # the event bridge cron job guy here
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/get-client-traffic"
+    }
+  }
 
   function_name = "DatabaseCanary"
   handler       = "index.handler"
@@ -538,11 +624,11 @@ module "DatabaseCanary" { # the event bridge cron job guy here
 
   environment_variables = {
     DATABASE_CANARY_CRON_NAME = "database-canary"
-    GLOBAL_APP_DB_CLUSTER_IDENTIFIER = ""
+    GLOBAL_APP_DB_CLUSTER_IDENTIFIER = "${aws_rds_global_cluster.this_app.id}"
     GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
     GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
-    PUBLIC_FQDN = "ha-serverless.devopslord.com"
-    REGIONAL_APP_DB_CLUSTER_ARN = ""
+    PUBLIC_FQDN = "${var.domainName}"
+    REGIONAL_APP_DB_CLUSTER_ARN = module.aurora_postgresql_v2_primary_app.cluster_arn
     REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
 
@@ -578,7 +664,14 @@ module "DatabaseCanary" { # the event bridge cron job guy here
 
 module "FailoverCompletedHandler" { # the rds event bridge guy here
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
+
+  allowed_triggers = {
+    AllowExecutionFromeventbridge = {
+      principal    = "events.amazonaws.com"
+      source_arn = "${aws_cloudwatch_event_rule.rds.arn}"
+    }
+  }
 
 
   function_name = "FailoverCompletedHandler"
@@ -600,18 +693,18 @@ module "FailoverCompletedHandler" { # the rds event bridge guy here
     GLOBAL_APP_DB_WRITER_ENDPOINT = local.writer_endpoint_app
     GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
     PRIMARY_REGION_NAME = local.region1
-    PRIVATE_HOSTED_ZONE_ID = var.zone_id
+    PRIVATE_HOSTED_ZONE_ID = aws_route53_zone.private.zone_id
     PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
-    PUBLIC_FQDN = "ha-serverless.devopslord.com"
-    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    PUBLIC_FQDN = "${var.domainName}"
+    PUBLIC_HOSTED_ZONE_ID = data.aws_route53_zone.this.id
     REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
     REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
     REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
     REGIONAL_APP_DB_PROXY_NAME = "app-db-proxy"
     REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
-    REGIONAL_WEB_ALB_FQDN = ""
-    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
+    REGIONAL_WEB_ALB_FQDN = module.alb.dns_name
+    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = module.alb.zone_id
 
   }
 
@@ -644,7 +737,14 @@ module "FailoverCompletedHandler" { # the rds event bridge guy here
 
 module "FailoverStartedHandler" { # another event bridge guy here
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
+
+  allowed_triggers = {
+    AllowExecutionFromeventbridge = {
+      principal    = "events.amazonaws.com"
+      source_arn = "${aws_cloudwatch_event_rule.rds2.arn}"
+    }
+  }
 
 
   function_name = "FailoverStartedHandler"
@@ -667,18 +767,18 @@ module "FailoverStartedHandler" { # another event bridge guy here
     GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
     GLOBAL_DEMO_DB_READER_ENDPOINT = local.reader_endpoint
     PRIMARY_REGION_NAME = local.region1
-    PRIVATE_HOSTED_ZONE_ID = var.zone_id
+    PRIVATE_HOSTED_ZONE_ID = aws_route53_zone.private.zone_id
     PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
-    PUBLIC_FQDN = "ha-serverless.devopslord.com"
-    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    PUBLIC_FQDN = "${var.domainName}"
+    PUBLIC_HOSTED_ZONE_ID = data.aws_route53_zone.this.id
     REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
     REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
     REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
     REGIONAL_APP_DB_PROXY_NAME = "app-db-proxy"
     REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
-    REGIONAL_WEB_ALB_FQDN = ""
-    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
+    REGIONAL_WEB_ALB_FQDN = module.alb.dns_name
+    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = module.alb.zone_id
 
   }
 
@@ -717,8 +817,14 @@ module "FailoverStartedHandler" { # another event bridge guy here
 
 module "RdsProxyMonitor" { # another event bridge cron
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
 
+  allowed_triggers = {
+    AllowExecutionFromeSNS = {
+      principal    = "apigateway.amazonaws.com"
+      source_arn = "arn:aws:execute-api:${local.region1}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.my_api.id}/default/GET/get-client-traffic"
+    }
+  }
 
   function_name = "RdsProxyMonitor"
   description   = "Invokes Handler When Failover is Completed"  
@@ -740,18 +846,18 @@ module "RdsProxyMonitor" { # another event bridge cron
     GLOBAL_DEMO_DB_WRITER_ENDPOINT = local.writer_endpoint
     GLOBAL_DEMO_DB_READER_ENDPOINT = local.reader_endpoint
     PRIMARY_REGION_NAME = local.region1
-    PRIVATE_HOSTED_ZONE_ID = var.zone_id
+    PRIVATE_HOSTED_ZONE_ID = aws_route53_zone.private.zone_id
     PROXY_MONITOR_CRON_NAME = "RdsProxyMonitorCron"
-    PUBLIC_FQDN = "ha-serverless.devopslord.com"
-    PUBLIC_HOSTED_ZONE_ID = var.zone_id
+    PUBLIC_FQDN = "${var.domainName}"
+    PUBLIC_HOSTED_ZONE_ID = data.aws_route53_zone.this.id
     REGIONAL_APP_DB_CLUSTER_IDENTIFIER = module.aurora_postgresql_v2_secondary.cluster_id
     REGIONAL_APP_DB_CLUSTER_READER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_reader_endpoint
     REGIONAL_APP_DB_CLUSTER_WRITER_ENDPOINT = module.aurora_postgresql_v2_primary.cluster_endpoint
     REGIONAL_APP_DB_PROXY_NAME = "app-db-proxy"
     REGIONAL_APP_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
     REGIONAL_DEMO_DB_SECRET_ARN = "${aws_secretsmanager_secret.db_pass.arn}"
-    REGIONAL_WEB_ALB_FQDN = ""
-    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = ""
+    REGIONAL_WEB_ALB_FQDN = module.alb.dns_name
+    REGIONAL_WEB_ALB_HOSTED_ZONE_ID = module.alb.zone_id
 
   }
 
@@ -784,7 +890,14 @@ module "RdsProxyMonitor" { # another event bridge cron
 
 module "Website" { # loadbalancer guy here!
   source = "terraform-aws-modules/lambda/aws"
-  layer_name = aws_lambda_layer_version.lambda_layer.layer_name
+  layers = [ aws_lambda_layer_version.lambda_layer.arn ]
+
+  allowed_triggers = {
+    AllowExecutionFromELB = {
+      service    = "elasticloadbalancing"
+      source_arn = module.alb.target_groups["ex-lambda-with-trigger"].arn
+    }
+  }
 
 
   function_name = "Website"

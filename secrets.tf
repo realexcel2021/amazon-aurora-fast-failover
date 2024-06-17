@@ -18,7 +18,11 @@ resource "aws_secretsmanager_secret_version" "example" {
     {
         "password": "${random_password.master.result}",
         "username": "root",
-        "database" : "template1"
+        "database" : "postgres",
+        "port" : 5432,
+        "dbClusterIdentifier": "${module.aurora_postgresql_v2_primary.cluster_id}",
+        "engine": "postgres",
+        "host": "${module.aurora_postgresql_v2_primary.cluster_endpoint}"
     }
   EOF
 }

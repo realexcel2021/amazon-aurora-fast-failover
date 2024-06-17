@@ -5,13 +5,13 @@
 
 data "aws_rds_engine_version" "postgresql" {
   engine  = "aurora-postgresql"
-  version = "14.5"
+  version = "14.8"
 }
 
 resource "aws_rds_global_cluster" "this" {
   global_cluster_identifier = local.name
   engine                    = "aurora-postgresql"
-  engine_version            = "14.5"
+  engine_version            = "14.8"
   database_name             = "aurora_db"
   storage_encrypted         = true
 }
@@ -19,7 +19,7 @@ resource "aws_rds_global_cluster" "this" {
 resource "aws_rds_global_cluster" "this_app" {
   global_cluster_identifier = "${local.name}-app-cluster"
   engine                    = "aurora-postgresql"
-  engine_version            = "14.5"
+  engine_version            = "14.8"
   database_name             = "aurora_db"
   storage_encrypted         = true
 }
@@ -37,12 +37,13 @@ module "aurora_postgresql_v2_primary_app" {
   master_password   = random_password.master.result 
   manage_master_user_password = false
   kms_key_id = aws_kms_key.primary-app.arn
+  enable_http_endpoint = true
 
   vpc_id               = module.vpc.vpc_id
   db_subnet_group_name = module.vpc.database_subnet_group_name
   security_group_rules = {
     vpc_ingress = {
-      cidr_blocks = module.vpc.private_subnets_cidr_blocks
+      cidr_blocks = [module.vpc.vpc_cidr_block]
     }
   }
 
@@ -59,7 +60,7 @@ module "aurora_postgresql_v2_primary_app" {
   instance_class = "db.serverless"
   instances = {
     one = {}
-    #two = {}
+    two = {}
   }
 
   tags = local.tags
@@ -78,12 +79,14 @@ module "aurora_postgresql_v2_primary" {
   master_password   = random_password.master.result 
   manage_master_user_password = false
   kms_key_id = aws_kms_key.primary.arn
+  enable_http_endpoint = true
+
 
   vpc_id               = module.vpc.vpc_id
   db_subnet_group_name = module.vpc.database_subnet_group_name
   security_group_rules = {
     vpc_ingress = {
-      cidr_blocks = module.vpc.private_subnets_cidr_blocks
+      cidr_blocks = [module.vpc.vpc_cidr_block]
     }
   }
 
@@ -100,7 +103,7 @@ module "aurora_postgresql_v2_primary" {
   instance_class = "db.serverless"
   instances = {
     one = {}
-    #two = {}
+    two = {}
   }
 
   tags = local.tags
@@ -122,13 +125,14 @@ module "aurora_postgresql_v2_secondary" {
   global_cluster_identifier = aws_rds_global_cluster.this.id
   source_region = local.region1
   kms_key_id = aws_kms_key.secondary.arn
+  enable_http_endpoint = true
 
 
   vpc_id               =module.vpc_secondary.vpc_id
   db_subnet_group_name = module.vpc_secondary.database_subnet_group_name
   security_group_rules = {
     vpc_ingress = {
-      cidr_blocks = module.vpc_secondary.private_subnets_cidr_blocks
+      cidr_blocks = [module.vpc_secondary.vpc_cidr_block]
     }
   }
 
@@ -145,7 +149,7 @@ module "aurora_postgresql_v2_secondary" {
   instance_class = "db.serverless"
   instances = {
     one = {}
-    #two = {}
+    two = {}
   }
 
   depends_on = [ module.aurora_postgresql_v2_primary ]
